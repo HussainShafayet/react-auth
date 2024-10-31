@@ -5,7 +5,7 @@ import {Navigate} from 'react-router-dom';
 
 const SignIn = () => {
   const dispatch = useDispatch();
-  const { loading, error } = useSelector((state) => state.auth);
+  const { loading, error, authenticated } = useSelector((state) => state.auth);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,7 +15,7 @@ const SignIn = () => {
     dispatch(userSignIn({ username:email, password }));
     <Navigate to="/profile" />
   };
-
+  if (authenticated) return <Navigate to="/profile" />;
   return (
     <form onSubmit={handleSubmit}>
       <input type="text" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" required />
