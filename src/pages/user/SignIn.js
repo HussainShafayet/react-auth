@@ -12,7 +12,7 @@ const SignIn = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    dispatch(userSignIn({ username:email, password }));
+    dispatch(userSignIn({ username:email, password , expiresInMins:1}));
     <Navigate to="/profile" />
   };
   if (authenticated) return <Navigate to="/profile" />;

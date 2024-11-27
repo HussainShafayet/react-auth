@@ -1,15 +1,15 @@
 import axios from 'axios';
 import store from '../store/store'
-import {logout, updateAccessToken} from '../features/userSlice';
+import {logout, refreshToken, updateAccessToken} from '../features/userSlice';
 
 
 const axiosInstance = axios.create({
   baseURL: 'https://dummyjson.com', // replace with your API base URL
 });
 
-// Request Interceptor to Add Access Token to Headers
+// Request Interceptor - Add access token to headers if available
 axiosInstance.interceptors.request.use((config) => {
-  const token = store.getState().user.token;
+  const { token } = store.getState().auth;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -26,12 +26,11 @@ axiosInstance.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        // Refresh the access token using the refresh token
-        const response = await axios.post('/auth/refresh', null, {
-          withCredentials: true, // Ensures the refresh token cookie is sent
-        });
+        console.log('Refreshing access token...');
+        const result = await store.dispatch(refreshToken({expiresInMins:1,refreshToken: store.getState().auth.refreshToken}));
+        console.log('new access result', result);
 
-        const newAccessToken = response.data.access_token;
+        const newAccessToken = result.data.accessToken;
         
         // Update the Redux state with the new access token
         store.dispatch(updateAccessToken(newAccessToken));
@@ -42,7 +41,7 @@ axiosInstance.interceptors.response.use(
       } catch (refreshError) {
         // If refresh fails, log out the user
         store.dispatch(logout());
-        window.location.href = '/login'; // Redirect to login
+        //window.location.href = '/signin'; // Redirect to login
       }
     }
 
