@@ -2,6 +2,7 @@ import axios from 'axios';
 import store from '../store/store'
 import {logout, refreshToken, updateAccessToken} from '../features/userSlice';
 
+import Cookies from 'js-cookie';
 
 const axiosInstance = axios.create({
   baseURL: 'https://dummyjson.com', // replace with your API base URL
@@ -16,37 +17,41 @@ axiosInstance.interceptors.request.use((config) => {
   return config;
 });
 
-// Response Interceptor for Refreshing Access Token on 401
+
+// Response interceptor to handle token refresh
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response.status === 401 && !originalRequest._retry) {
+    // Check if error is due to expired access token
+    if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-
-      try {
-        console.log('Refreshing access token...');
-        const result = await store.dispatch(refreshToken({expiresInMins:1,refreshToken: store.getState().auth.refreshToken}));
-        console.log('new access result', result);
-
-        const newAccessToken = result.payload.accessToken;
-        
-        // Update the Redux state with the new access token
-        store.dispatch(updateAccessToken(newAccessToken));
-
-        // Retry the original request with the new token
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        return axiosInstance(originalRequest);
-      } catch (refreshError) {
-        console.log('refresh error', refreshError);
-        
-        // If refresh fails, log out the user
-        store.dispatch(logout());
-        //window.location.href = '/signin'; // Redirect to login
+      const refresh_token = Cookies.get('refresh_token');
+      
+      if (refresh_token) {
+        try {
+          console.log('Refreshing access token...');
+          const result = await store.dispatch(refreshToken({expiresInMins:1,refreshToken: refresh_token}));
+          console.log('new access result', result);
+  
+          const newAccessToken = result.payload.accessToken;
+          
+          // Update the Redux state with the new access token
+          store.dispatch(updateAccessToken(newAccessToken));
+  
+          // Retry the original request with the new token
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          return axiosInstance(originalRequest);
+        } catch (refreshError) {
+          console.log('refresh error', refreshError);
+          
+          // If refresh fails, log out the user
+          store.dispatch(logout());
+          //window.location.href = '/signin'; // Redirect to login
+        }
       }
     }
-
     return Promise.reject(error);
   }
 );

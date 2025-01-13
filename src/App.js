@@ -12,7 +12,7 @@ function App() {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    //dispatch(checkAuth()); // Verifies if the session is active using the refresh token
+    dispatch(checkAuth()); // Verifies if the session is active using the refresh token
   }, [dispatch]);
   
   return (
@@ -24,9 +24,7 @@ function App() {
           <Route
             path="/profile"
             element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
+              <Profile />
             }
           />
         </Routes>

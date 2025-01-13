@@ -1,6 +1,8 @@
 import {createAsyncThunk, createSlice} from "@reduxjs/toolkit";
 import axios from "axios";
 //import axiosInstance from "../api/axiosSetup";
+import Cookies from 'js-cookie';
+
 const initialState = {
     user: null,
     token: null,
@@ -39,20 +41,17 @@ export const refreshToken = createAsyncThunk('auth/refreshToken', async (credent
 });
 
 // Check Authentication Status
-export const checkAuth = createAsyncThunk('user/checkAuth', async (_, { rejectWithValue }) => {
+export const checkAuth =  () => async (dispatch) => {
+  const refresh_token = Cookies.get('refresh_token');
+  if (refresh_token) {
     try {
-      
-      const api = (await import('../api/axiosSetup')).default;
-      
-      const response = await api.get('/auth/me'); // Endpoint that checks if the session is active
-      console.log('response', response);
-      
-      return response.data; // User data if authenticated
+      dispatch(refreshToken({expiresInMins:1,refreshToken: refresh_token}))
     } catch (error) {
+      console.error('Failed to refresh token:', error);
       return rejectWithValue(error.response.data);
     }
-  });
-
+  }
+};
 // Logout Action
 export const logoutUser = createAsyncThunk('user/logout', async (_, { rejectWithValue }) => {
     try {
@@ -63,6 +62,18 @@ export const logoutUser = createAsyncThunk('user/logout', async (_, { rejectWith
       return rejectWithValue(error.response.data);
     }
   });
+// Async action to get profile
+export const fetchProfile = createAsyncThunk('auth/fetchProfile', async (_, { rejectWithValue }) => {
+  try {
+    const api = (await import('../api/axiosSetup')).default;
+    const response = await api.get('/auth/me');
+    console.log('get user response', response);
+    return response.data;
+  } catch (error) {
+    return rejectWithValue(error.response.data);
+  }
+});
+
 
 const userSlice = createSlice({
     name: 'auth',
@@ -89,6 +100,11 @@ const userSlice = createSlice({
         state.token = action.payload.accessToken;
         state.refreshToken = action.payload.refreshToken;
         state.authenticated = true;
+
+        Cookies.set('refresh_token', action.payload.refreshToken, {
+          secure: true, // Ensures cookies are sent only over HTTPS
+          sameSite: 'Strict', // Prevents CSRF attacks
+        });
         
       })
       .addCase(userSignIn.rejected, (state, action) => {
@@ -96,13 +112,16 @@ const userSlice = createSlice({
         state.error = action.payload;
       })
       .addCase(refreshToken.fulfilled, (state, action) => {
+        
         state.token = action.payload.accessToken; // Update the access token
         //localStorage.setItem('accessToken', action.payload.accessToken);
+        state.authenticated = true;
       })
       .addCase(logoutUser.fulfilled, (state) => {
         state.user = null;
         state.token = null;
         state.authenticated = false;
+        Cookies.remove('refresh_token');
       });
     })
 });
