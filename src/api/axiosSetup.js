@@ -30,7 +30,7 @@ axiosInstance.interceptors.response.use(
         const result = await store.dispatch(refreshToken({expiresInMins:1,refreshToken: store.getState().auth.refreshToken}));
         console.log('new access result', result);
 
-        const newAccessToken = result.data.accessToken;
+        const newAccessToken = result.payload.accessToken;
         
         // Update the Redux state with the new access token
         store.dispatch(updateAccessToken(newAccessToken));
@@ -39,6 +39,8 @@ axiosInstance.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return axiosInstance(originalRequest);
       } catch (refreshError) {
+        console.log('refresh error', refreshError);
+        
         // If refresh fails, log out the user
         store.dispatch(logout());
         //window.location.href = '/signin'; // Redirect to login
